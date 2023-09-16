@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import pandas as pd
 from io import StringIO
 import requests
@@ -21,6 +22,18 @@ logging.basicConfig(
 
 # Define the expected schema for version 1
 SCHEMA_V1 = ['drop', 'length', 'path', 'user_agent', 'user_id']
+
+# Function to read configuration from a file
+def read_config(config_file):
+    try:
+        with open(config_file, 'r') as file:
+            config = json.load(file)
+            return config
+    except FileNotFoundError:
+        raise Exception(f"Config file '{config_file}' not found.")
+    except json.JSONDecodeError:
+        raise Exception(f"Invalid JSON format in config file '{config_file}'.")
+
 
 # Function to process data from a CSV file
 def process_csv_file(file_url, user_data):
@@ -67,7 +80,12 @@ def map_to_latest_schema(df, current_schema):
 
 # Main function
 def main():
-    url_root = "https://public.wiwdata.com/engineering-challenge/data/"
+    # Read the configuration file
+    config_file = 'config.json'
+    config = read_config(config_file)
+
+    # Use the root URL from the config
+    url_root = config.get('root_url')
     file_names = [f"{chr(97 + i)}.csv" for i in range(26)]
     user_data = pd.DataFrame(columns=SCHEMA_V1)
 
@@ -75,8 +93,10 @@ def main():
         file_url = os.path.join(url_root, file_name)
         user_data = process_csv_file(file_url, user_data)
 
+    output_file = config.get('output_file')
+
     # Write the transformed data to an output CSV file with specified columns
-    user_data.to_csv('output/output.csv', index=True, header=True)
+    user_data.to_csv(output_file, index=True, header=True)
 
 if __name__ == '__main__':
     main()
